@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from flask import Flask, jsonify, request
 
-DIFFICULTY = 6
+DIFFICULTY = 3
 
 
 class Blockchain(object):
@@ -82,7 +82,7 @@ class Blockchain(object):
         return self.chain[-1]
 
     @staticmethod
-    def valid_proof(block_string, proof, miner_guess):
+    def valid_proof(block_string, proof):
         """
         Validates the Proof:  Does hash(block_string, proof) contain 3
         leading zeroes?  Return true if the proof is valid
@@ -93,20 +93,17 @@ class Blockchain(object):
         correct number of leading zeroes.
         :return: True if the resulting hash is a valid proof, False otherwise
         """
-        block_string = json.dumps(block_string)
+        block_string = json.dumps(block_string, sort_keys=True)
         guess_string = f'{block_string}{proof}'.encode()
         guess = hashlib.sha256(guess_string).hexdigest()
+        print(guess)
         # return True or False
-        print("Blockchain guess string: ", f"{block_string}{proof}")
-        print("Miner guess string: ", miner_guess)
-        print(guess_string.decode() == miner_guess)
-        print(guess, '0' * DIFFICULTY, guess[:DIFFICULTY] == '0' * DIFFICULTY)
         return guess[:DIFFICULTY] == '0' * DIFFICULTY
 
 
 # Instantiate our Node
 app = Flask(__name__)
-app.config['JSON_SORT_KEYS'] = False
+# app.config['JSON_SORT_KEYS'] = False
 
 # Generate a globally unique address for this node
 node_identifier = str(uuid4()).replace('-', '')
@@ -118,11 +115,9 @@ blockchain = Blockchain()
 @app.route('/mine', methods=['POST'])
 def mine():
     data = request.get_json()
-    print(data)
-    proof, miner_guess = data['proof'], data['guess_string']
-    print(blockchain.last_block, proof)
+    proof = data['proof']
     # if data.proof and data.id:
-    if blockchain.valid_proof(blockchain.last_block, proof, miner_guess):
+    if blockchain.valid_proof(blockchain.last_block, proof):
         previous_hash_value = blockchain.hash(blockchain.last_block)
         new_block = blockchain.new_block(proof, previous_hash_value)
         response = {
@@ -134,7 +129,7 @@ def mine():
         response = {
             'message': 'Nope nope nope nope nope. Try again.'
         }
-        return jsonify(response), 400
+        return jsonify(response), 200
 
 
 @app.route('/chain', methods=['GET'])
@@ -148,6 +143,7 @@ def full_chain():
 
 @app.route('/last_block', methods=['GET'])
 def last_block():
+    print("Server-side last block: ", blockchain.last_block)
     response = {
         'last_block': blockchain.last_block
     }

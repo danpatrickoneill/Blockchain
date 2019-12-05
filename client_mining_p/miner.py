@@ -13,13 +13,13 @@ def proof_of_work(block):
     in an effort to find a number that is a valid proof
     :return: A valid proof for the provided block
     """
-    block_string = json.dumps(block)
+    block_string = json.dumps(block, sort_keys=True)
     proof = 0
     while valid_proof(block_string, proof) is False:
         proof += 1
 
-    guess_string = valid_proof(block_string, proof)
-    return [proof, guess_string]
+    print(proof)
+    return proof
 
 
 def valid_proof(block_string, proof):
@@ -36,12 +36,15 @@ def valid_proof(block_string, proof):
     guess_string = f'{block_string}{proof}'.encode()
     guess = hashlib.sha256(guess_string).hexdigest()
     # return True or False
-    if guess[:6] == '0' * 6:
-        print("Miner guess string: ", f'{block_string}{proof}')
-        print(guess, '0' * 6, guess[:6] == '0' * 6)
-        return guess_string.decode()
-    return False
+    if guess[:3] == '0' * 3:
+        print(guess)
+    return guess[:3] == '0' * 3
 
+
+{'index': 1, 'timestamp': 1575581212.8133414,
+    'transactions': [], 'proof': 100, 'previous_hash': 'genesis'}
+{'index': 1, 'previous_hash': 'genesis', 'proof': 100,
+    'timestamp': 1575581342.1699934, 'transactions': []}
 
 if __name__ == '__main__':
     # What is the server address? IE `python3 miner.py https://server.com/api/`
@@ -72,13 +75,13 @@ if __name__ == '__main__':
             break
 
         # TODO: Get the block from `data` and use it to look for a new proof
-        print(data['last_block'])
-        result = proof_of_work(data['last_block'])
-        new_proof, guess_string = result[0], result[1]
-        print(new_proof)
+        block = data['last_block']
+        print("Client-side last block: ", block)
+
+        new_proof = proof_of_work(block)
 
         # When found, POST it to the server {"proof": new_proof, "id": id}
-        post_data = {"proof": new_proof, "guess_string": guess_string}
+        post_data = {"proof": new_proof}
 
         r = requests.post(url=node + "/mine", json=post_data)
         print(r)
@@ -87,8 +90,8 @@ if __name__ == '__main__':
         # TODO: If the server responds with a 'message' 'New Block Forged'
         # add 1 to the number of coins mined and print it.  Otherwise,
         # print the message from the server.
-        print(data['message'])
         if data['message'] == 'New Block Forged':
+            print(data['message'])
             coins_mined += 1
             print(coins_mined)
         else:
